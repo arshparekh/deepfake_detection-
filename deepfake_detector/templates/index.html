@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DeepTrace — AI Deepfake Detector</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet" />
+
+    <style>
+         :root {
+            --bg: #07080d;
+            --surface: #0e1018;
+            --card: #12151f;
+            --border: #1e2235;
+            --accent: #00f5a0;
+            --danger: #ff3e5e;
+            --warn: #ffb020;
+            --text: #e8eaf2;
+            --muted: #5a6080;
+            --glow: 0 0 40px rgba(0, 245, 160, .15);
+            --mono: 'Space Mono', monospace;
+            --sans: 'Syne', sans-serif;
+        }
+        /* ── RESET ───────────────────────────────── */
+        
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--sans);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        /* ── GRID BG ─────────────────────────────── */
+        
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: linear-gradient(rgba(0, 245, 160, .03) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 245, 160, .03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        header {
+            position: relative;
+            z-index: 10;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.4rem 2.5rem;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(12px);
+        }
+        
+        .logo {
+            font-family: var(--mono);
+            font-size: 1.15rem;
+            letter-spacing: .1em;
+            color: var(--accent);
+        }
+        
+        .logo span {
+            color: var(--text);
+            opacity: .5;
+        }
+        
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: .5rem;
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--muted);
+            border: 1px solid var(--border);
+            padding: .3rem .8rem;
+            border-radius: 100px;
+        }
+        
+        .pulse {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: .3;
+            }
+        }
+        /* ── HERO ────────────────────────────────── */
+        
+        .hero {
+            position: relative;
+            z-index: 5;
+            text-align: center;
+            padding: 5rem 2rem 3rem;
+        }
+        
+        .hero-eyebrow {
+            font-family: var(--mono);
+            font-size: .75rem;
+            color: var(--accent);
+            letter-spacing: .25em;
+            margin-bottom: 1.2rem;
+        }
+        
+        .hero h1 {
+            font-size: clamp(2.4rem, 6vw, 5rem);
+            font-weight: 800;
+            line-height: 1.05;
+            margin-bottom: 1.2rem;
+        }
+        
+        .hero h1 em {
+            font-style: normal;
+            background: linear-gradient(135deg, var(--accent), #00c8ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            color: var(--muted);
+            font-size: 1.05rem;
+            max-width: 560px;
+            margin: 0 auto 2rem;
+            line-height: 1.7;
+        }
+        /* ── STATS ROW ───────────────────────────── */
+        
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin: 0 auto 4rem;
+            flex-wrap: wrap;
+        }
+        
+        .stat {
+            text-align: center;
+        }
+        
+        .stat-val {
+            font-family: var(--mono);
+            font-size: 2rem;
+            color: var(--accent);
+            font-weight: 700;
+        }
+        
+        .stat-label {
+            font-size: .72rem;
+            color: var(--muted);
+            letter-spacing: .1em;
+            margin-top: .25rem;
+        }
+        /* ── MAIN LAYOUT ─────────────────────────── */
+        
+        .main {
+            position: relative;
+            z-index: 5;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 2rem 6rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+        }
+        
+        @media (max-width: 720px) {
+            .main {
+                grid-template-columns: 1fr;
+            }
+        }
+        /* ── CARD ────────────────────────────────── */
+        
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .card-header {
+            padding: 1rem 1.4rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--mono);
+            font-size: .72rem;
+            color: var(--muted);
+            letter-spacing: .12em;
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+        }
+        
+        .card-header .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+        /* ── UPLOAD ZONE ─────────────────────────── */
+        
+        .upload-zone {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 320px;
+            padding: 2rem;
+            cursor: pointer;
+            transition: background .2s;
+        }
+        
+        .upload-zone:hover {
+            background: rgba(0, 245, 160, .03);
+        }
+        
+        .upload-zone.drag-over {
+            background: rgba(0, 245, 160, .07);
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .upload-icon {
+            width: 72px;
+            height: 72px;
+            margin-bottom: 1.2rem;
+            opacity: .6;
+        }
+        
+        .upload-zone h3 {
+            font-size: 1rem;
+            margin-bottom: .5rem;
+        }
+        
+        .upload-zone p {
+            font-size: .82rem;
+            color: var(--muted);
+        }
+        
+        .preview-img {
+            max-height: 280px;
+            max-width: 100%;
+            border-radius: 10px;
+            object-fit: contain;
+            display: none;
+        }
+        /* ── BUTTON ──────────────────────────────── */
+        
+        .btn-analyse {
+            display: block;
+            width: calc(100% - 2.8rem);
+            margin: 0 1.4rem 1.4rem;
+            padding: .9rem 1.2rem;
+            background: var(--accent);
+            color: #07080d;
+            font-family: var(--mono);
+            font-size: .85rem;
+            font-weight: 700;
+            letter-spacing: .08em;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: opacity .2s, transform .1s;
+        }
+        
+        .btn-analyse:hover:not(:disabled) {
+            opacity: .85;
+            transform: translateY(-1px);
+        }
+        
+        .btn-analyse:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+        }
+        /* ── RESULTS PANEL ───────────────────────── */
+        
+        .results-panel {
+            padding: 1.4rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            min-height: 380px;
+        }
+        /* verdict badge */
+        
+        .verdict {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.1rem 1.4rem;
+            border-radius: 12px;
+            border: 1px solid;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all .4s ease;
+        }
+        
+        .verdict.visible {
+            opacity: 1;
+            transform: none;
+        }
+        
+        .verdict.fake {
+            background: rgba(255, 62, 94, .08);
+            border-color: rgba(255, 62, 94, .3);
+        }
+        
+        .verdict.real {
+            background: rgba(0, 245, 160, .08);
+            border-color: rgba(0, 245, 160, .3);
+        }
+        
+        .verdict-label {
+            font-family: var(--mono);
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        
+        .verdict.fake .verdict-label {
+            color: var(--danger);
+        }
+        
+        .verdict.real .verdict-label {
+            color: var(--accent);
+        }
+        
+        .verdict-conf {
+            font-family: var(--mono);
+            font-size: .8rem;
+            color: var(--muted);
+        }
+        
+        .verdict-conf strong {
+            font-size: 1.8rem;
+            font-weight: 700;
+        }
+        
+        .verdict.fake .verdict-conf strong {
+            color: var(--danger);
+        }
+        
+        .verdict.real .verdict-conf strong {
+            color: var(--accent);
+        }
+        /* confidence bar */
+        
+        .conf-bar-wrap {
+            background: var(--border);
+            border-radius: 100px;
+            height: 6px;
+            overflow: hidden;
+        }
+        
+        .conf-bar {
+            height: 100%;
+            width: 0;
+            border-radius: 100px;
+            transition: width .8s cubic-bezier(.25, .8, .25, 1);
+        }
+        
+        .conf-bar.fake {
+            background: linear-gradient(90deg, var(--danger), #ff7090);
+        }
+        
+        .conf-bar.real {
+            background: linear-gradient(90deg, var(--accent), #00c8ff);
+        }
+        /* feature metrics */
+        
+        .metrics-title {
+            font-family: var(--mono);
+            font-size: .68rem;
+            color: var(--muted);
+            letter-spacing: .15em;
+            margin-bottom: .6rem;
+        }
+        
+        .metric-row {
+            display: flex;
+            align-items: center;
+            gap: .8rem;
+            margin-bottom: .6rem;
+        }
+        
+        .metric-name {
+            font-size: .75rem;
+            color: var(--muted);
+            width: 160px;
+            flex-shrink: 0;
+        }
+        
+        .metric-bar-bg {
+            flex: 1;
+            background: var(--border);
+            border-radius: 100px;
+            height: 4px;
+            overflow: hidden;
+        }
+        
+        .metric-bar {
+            height: 100%;
+            border-radius: 100px;
+            background: linear-gradient(90deg, #5a6080, var(--accent));
+            transition: width .9s ease;
+        }
+        
+        .metric-val {
+            font-family: var(--mono);
+            font-size: .7rem;
+            color: var(--muted);
+            width: 36px;
+            text-align: right;
+        }
+        /* face detection tag */
+        
+        .face-tag {
+            font-family: var(--mono);
+            font-size: .68rem;
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .25rem .7rem;
+            border-radius: 100px;
+            border: 1px solid var(--border);
+            color: var(--muted);
+        }
+        /* idle state */
+        
+        .idle-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            color: var(--muted);
+            gap: .8rem;
+            opacity: .5;
+        }
+        
+        .idle-message svg {
+            opacity: .4;
+        }
+        /* spinner */
+        
+        .spinner {
+            display: none;
+            width: 36px;
+            height: 36px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin .7s linear infinite;
+            margin: auto;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        /* ── MODEL INFO BOX ──────────────────────── */
+        
+        .model-box {
+            grid-column: 1 / -1;
+            padding: 1.4rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 1rem;
+        }
+        
+        .model-item {}
+        
+        .model-item-label {
+            font-family: var(--mono);
+            font-size: .62rem;
+            color: var(--muted);
+            letter-spacing: .15em;
+            margin-bottom: .3rem;
+        }
+        
+        .model-item-val {
+            font-size: .88rem;
+            font-weight: 600;
+        }
+        
+        .chip {
+            display: inline-block;
+            padding: .2rem .6rem;
+            background: rgba(0, 245, 160, .1);
+            border: 1px solid rgba(0, 245, 160, .2);
+            border-radius: 6px;
+            font-family: var(--mono);
+            font-size: .68rem;
+            color: var(--accent);
+        }
+        /* ── FOOTER ──────────────────────────────── */
+        
+        footer {
+            text-align: center;
+            padding: 2rem;
+            font-family: var(--mono);
+            font-size: .68rem;
+            color: var(--muted);
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- HEADER -->
+    <header>
+        <div class="logo">DEEP<span>/</span>TRACE</div>
+        <div class="status-pill">
+            <div class="pulse"></div>
+            MODEL ONLINE
+        </div>
+    </header>
+
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-eyebrow">CNN · FACEFORENSICS++ · TENSORFLOW</div>
+        <h1>Detect <em>Deepfakes</em><br/>with Precision</h1>
+        <p>
+            Upload any facial image and our EfficientNet-B0 CNN, trained on the FaceForensics++ dataset, will analyse frequency artefacts, colour inconsistencies, and GAN fingerprints in milliseconds.
+        </p>
+    </section>
+
+    <!-- STATS -->
+    <div class="stats">
+        <div class="stat">
+            <div class="stat-val">~95%</div>
+            <div class="stat-label">ACCURACY</div>
+        </div>
+        <div class="stat">
+            <div class="stat-val">1200+</div>
+            <div class="stat-label">FF++ SAMPLES</div>
+        </div>
+        <div class="stat">
+            <div class="stat-val">EfficientNet</div>
+            <div class="stat-label">BACKBONE</div>
+        </div>
+        <div class="stat">
+            <div class="stat-val">&lt; 1s</div>
+            <div class="stat-label">INFERENCE</div>
+        </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main">
+
+        <!-- UPLOAD CARD -->
+        <div class="card">
+            <div class="card-header">
+                <div class="dot"></div>INPUT IMAGE</div>
+
+            <div class="upload-zone" id="upload-zone">
+                <input type="file" id="file-input" accept="image/*" />
+                <svg class="upload-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="80" height="80" rx="16" fill="rgba(0,245,160,.06)"/>
+          <path d="M40 52V28M40 28L30 38M40 28L50 38" stroke="#00f5a0" stroke-width="2" stroke-linecap="round"/>
+          <path d="M24 56h32" stroke="#00f5a0" stroke-width="2" stroke-linecap="round" opacity=".4"/>
+        </svg>
+                <h3>Drop your image here</h3>
+                <p>or click to browse — JPG, PNG, WEBP</p>
+                <img class="preview-img" id="preview" alt="Preview" />
+            </div>
+
+            <button class="btn-analyse" id="btn-analyse" disabled>
+        ▶ ANALYSE IMAGE
+      </button>
+        </div>
+
+        <!-- RESULTS CARD -->
+        <div class="card">
+            <div class="card-header">
+                <div class="dot"></div>ANALYSIS RESULTS</div>
+
+            <div class="results-panel" id="results-panel">
+
+                <!-- idle -->
+                <div class="idle-message" id="idle-msg">
+                    <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+            <circle cx="24" cy="24" r="20" stroke="#5a6080" stroke-width="1.5"/>
+            <path d="M16 24c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8-8-3.6-8-8z" stroke="#5a6080" stroke-width="1.5"/>
+            <circle cx="24" cy="24" r="3" fill="#5a6080"/>
+          </svg>
+                    <span>Upload an image to begin analysis</span>
+                </div>
+
+                <!-- spinner -->
+                <div class="spinner" id="spinner"></div>
+
+                <!-- verdict -->
+                <div class="verdict" id="verdict" style="display:none">
+                    <div>
+                        <div style="font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-bottom:.4rem;letter-spacing:.15em">VERDICT</div>
+                        <div class="verdict-label" id="verdict-label">—</div>
+                    </div>
+                    <div class="verdict-conf">
+                        <div style="font-size:.62rem;color:var(--muted);margin-bottom:.15rem;letter-spacing:.1em">CONFIDENCE</div>
+                        <strong id="verdict-conf">—</strong>%
+                    </div>
+                </div>
+
+                <!-- conf bar -->
+                <div id="conf-bar-section" style="display:none">
+                    <div class="conf-bar-wrap">
+                        <div class="conf-bar" id="conf-bar"></div>
+                    </div>
+                </div>
+
+                <!-- features -->
+                <div id="features-section" style="display:none">
+                    <div class="metrics-title">FEATURE ANALYSIS</div>
+                    <div class="metric-row">
+                        <span class="metric-name">Frequency Artefacts</span>
+                        <div class="metric-bar-bg">
+                            <div class="metric-bar" id="m-freq" style="width:0"></div>
+                        </div>
+                        <span class="metric-val" id="mv-freq">—</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-name">Colour Inconsistency</span>
+                        <div class="metric-bar-bg">
+                            <div class="metric-bar" id="m-col" style="width:0"></div>
+                        </div>
+                        <span class="metric-val" id="mv-col">—</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-name">Edge Anomalies</span>
+                        <div class="metric-bar-bg">
+                            <div class="metric-bar" id="m-edge" style="width:0"></div>
+                        </div>
+                        <span class="metric-val" id="mv-edge">—</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-name">Noise Patterns</span>
+                        <div class="metric-bar-bg">
+                            <div class="metric-bar" id="m-noise" style="width:0"></div>
+                        </div>
+                        <span class="metric-val" id="mv-noise">—</span>
+                    </div>
+                </div>
+
+                <!-- tags -->
+                <div id="tags-section" style="display:none">
+                    <span class="face-tag" id="face-tag">—</span>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- MODEL INFO -->
+        <div class="card model-box">
+            <div>
+                <div class="model-item-label">ARCHITECTURE</div>
+                <div class="model-item-val"><span class="chip">EfficientNet-B0</span></div>
+            </div>
+            <div>
+                <div class="model-item-label">DATASET</div>
+                <div class="model-item-val"><span class="chip">FaceForensics++</span></div>
+            </div>
+            <div>
+                <div class="model-item-label">FRAMEWORK</div>
+                <div class="model-item-val"><span class="chip">TensorFlow 2.x</span></div>
+            </div>
+            <div>
+                <div class="model-item-label">FORGERY TYPES</div>
+                <div class="model-item-val"><span class="chip">Deepfakes · Face2Face · FaceSwap</span></div>
+            </div>
+            <div>
+                <div class="model-item-label">TARGET ACCURACY</div>
+                <div class="model-item-val"><span class="chip">~95 %</span></div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- FOOTER -->
+    <footer>
+        DEEPTRACE © 2026 — CNN-based deepfake detection · FaceForensics++ · Research purposes only
+    </footer>
+
+    <!-- ── JS ──────────────────────────────────── -->
+    <script>
+        const API = 'http://localhost:5000';
+
+        const zone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const preview = document.getElementById('preview');
+        const btnAnalyse = document.getElementById('btn-analyse');
+        const idleMsg = document.getElementById('idle-msg');
+        const spinner = document.getElementById('spinner');
+        const verdict = document.getElementById('verdict');
+        const confBarSec = document.getElementById('conf-bar-section');
+        const featuresSec = document.getElementById('features-section');
+        const tagsSec = document.getElementById('tags-section');
+
+        let currentBase64 = null;
+
+        // ── DRAG & DROP ──
+        zone.addEventListener('click', () => fileInput.click());
+        zone.addEventListener('dragover', e => {
+            e.preventDefault();
+            zone.classList.add('drag-over');
+        });
+        zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+        zone.addEventListener('drop', e => {
+            e.preventDefault();
+            zone.classList.remove('drag-over');
+            const file = e.dataTransfer.files[0];
+            if (file) loadFile(file);
+        });
+        fileInput.addEventListener('change', e => {
+            if (e.target.files[0]) loadFile(e.target.files[0]);
+        });
+
+        function loadFile(file) {
+            const reader = new FileReader();
+            reader.onload = ev => {
+                currentBase64 = ev.target.result;
+                preview.src = currentBase64;
+                preview.style.display = 'block';
+                zone.querySelector('svg.upload-icon').style.display = 'none';
+                zone.querySelector('h3').style.display = 'none';
+                zone.querySelector('p').style.display = 'none';
+                btnAnalyse.disabled = false;
+                resetResults();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function resetResults() {
+            idleMsg.style.display = 'flex';
+            spinner.style.display = 'none';
+            verdict.style.display = 'none';
+            confBarSec.style.display = 'none';
+            featuresSec.style.display = 'none';
+            tagsSec.style.display = 'none';
+        }
+
+        // ── ANALYSE ──
+        btnAnalyse.addEventListener('click', async() => {
+            if (!currentBase64) return;
+
+            idleMsg.style.display = 'none';
+            spinner.style.display = 'block';
+            verdict.style.display = 'none';
+            confBarSec.style.display = 'none';
+            featuresSec.style.display = 'none';
+            tagsSec.style.display = 'none';
+            btnAnalyse.disabled = true;
+
+            try {
+                const res = await fetch(`${API}/api/detect`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        image: currentBase64
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error || 'Server error');
+                renderResults(data);
+            } catch (err) {
+                spinner.style.display = 'none';
+                idleMsg.style.display = 'flex';
+                idleMsg.querySelector('span').textContent = '⚠ ' + err.message;
+            } finally {
+                btnAnalyse.disabled = false;
+            }
+        });
+
+        function renderResults(data) {
+            spinner.style.display = 'none';
+
+            // Verdict
+            const cls = data.is_fake ? 'fake' : 'real';
+            verdict.className = `verdict ${cls}`;
+            verdict.style.display = 'flex';
+            document.getElementById('verdict-label').textContent = data.label;
+            document.getElementById('verdict-conf').textContent = data.confidence;
+            requestAnimationFrame(() => verdict.classList.add('visible'));
+
+            // Confidence bar
+            confBarSec.style.display = 'block';
+            const bar = document.getElementById('conf-bar');
+            bar.className = `conf-bar ${cls}`;
+            setTimeout(() => bar.style.width = data.confidence + '%', 50);
+
+            // Feature metrics
+            featuresSec.style.display = 'block';
+            const f = data.features;
+            setMetric('freq', f.frequency_artifacts);
+            setMetric('col', f.color_inconsistency);
+            setMetric('edge', f.edge_anomalies);
+            setMetric('noise', f.noise_patterns);
+
+            // Face tag
+            tagsSec.style.display = 'block';
+            document.getElementById('face-tag').textContent =
+                data.face_detected ? '✓ Face detected' : '⚠ No face detected — full image analysed';
+        }
+
+        function setMetric(id, val) {
+            document.getElementById(`mv-${id}`).textContent = val;
+            setTimeout(() => {
+                document.getElementById(`m-${id}`).style.width = val + '%';
+            }, 100);
+        }
+    </script>
+
+</body>
+
+</html>
